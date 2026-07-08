@@ -20,3 +20,6 @@ src-tauri/gen/
 # OS
 Thumbs.db
 .DS_Store
+
+# Recon capture output (runtime debug data, contains local paths)
+recon-out/

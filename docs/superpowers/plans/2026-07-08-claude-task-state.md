@@ -13,6 +13,11 @@
 - `cc_state` extracted as a shared lib so the state machine is fully unit-testable without Tauri.
 - Forwarder **chains** a pre-existing user statusline (stored in `forwarder.json`) instead of clobbering it.
 
+**Plan deviations found during implementation (Tasks 6–7, all committed on `feat/core-logic`):**
+- `cc_forwarder` uses `minreq` instead of `ureq`+`mockito`: ureq's default TLS pulls `ring` (C/asm), which fails under the GNU toolchain (no gcc). minreq is pure-Rust; the POST-delivery test uses a `std::net::TcpListener` mock instead of mockito.
+- `cc_collector` has NO `ureq` dev-dependency (the plan listed one, but the tests call `ingest_*` directly — no HTTP client needed; declaring ureq would have pulled `ring`).
+- Root `Cargo.toml` is a workspace (`members = [state, forwarder, collector]`); `src-tauri` will stay out of it.
+
 **Repo layout (locked):**
 ```
 claude-task-state/
