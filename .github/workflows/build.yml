@@ -31,6 +31,9 @@ jobs:
       - name: Install Tauri CLI (v2)
         run: cargo install tauri-cli --version "^2" --locked
 
+      - name: Generate app icons
+        run: cargo tauri icon app-icon.png
+
       # src-tauri is excluded from the root workspace (Tauri manages its own build).
       # bundle.targets in tauri.conf.json is ["msi","nsis"], so this emits both installers.
       - name: Build Tauri installers (msi + nsis)
