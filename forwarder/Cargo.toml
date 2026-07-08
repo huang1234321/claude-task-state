@@ -1,0 +1,15 @@
+[package]
+name = "cc_forwarder"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cc-forward"
+path = "src/main.rs"
+
+[dependencies]
+minreq = { version = "2", features = ["json-using-serde"] }
+serde_json = "1"
+
+[dev-dependencies]
+# mockito = "1"  # Temporarily disabled - requires native compilation

@@ -1,3 +1,3 @@
 [workspace]
-members = ["state"]
+members = ["forwarder","state"]
 resolver = "2"
