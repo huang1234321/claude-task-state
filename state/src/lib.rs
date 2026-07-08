@@ -113,6 +113,27 @@ pub fn transition(rec: &SessionRecord, event: &Event, now: Instant) -> SessionRe
     next
 }
 
+/// Map a raw hook payload to a domain Event.
+/// `notification_type`: Notification hook subtype (e.g. "idle_prompt").
+/// `tool_error`: true when a PostToolUse payload indicates failure.
+pub fn classify_hook(hook_event_name: &str, notification_type: Option<&str>, tool_error: bool) -> Option<Event> {
+    match hook_event_name {
+        "SessionStart" => Some(Event::SessionStart),
+        "SessionEnd" => Some(Event::SessionEnd),
+        "UserPromptSubmit" => Some(Event::UserPromptSubmit),
+        "PreToolUse" => Some(Event::PreToolUse),
+        "Stop" => Some(Event::Stop),
+        "PostToolUse" if tool_error => Some(Event::PostToolUseFailure),
+        "PostToolUse" => Some(Event::PostToolUse),
+        "Notification" => match notification_type {
+            Some("idle_prompt") => Some(Event::NotificationIdle),
+            Some("permission_prompt") => Some(Event::NotificationPermission),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
