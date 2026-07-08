@@ -68,6 +68,51 @@ impl SessionRecord {
     }
 }
 
+pub fn transition(rec: &SessionRecord, event: &Event, now: Instant) -> SessionRecord {
+    let mut next = rec.clone();
+    match event {
+        Event::SessionStart => {
+            next.state = SessionState::Starting;
+            next.started_at = now;
+            next.last_beat_at = Some(now);
+            next.error_count = 0;
+        }
+        Event::UserPromptSubmit | Event::PreToolUse | Event::PostToolUse => {
+            next.state = SessionState::Working;
+            next.last_beat_at = Some(now);
+        }
+        Event::StatuslineBeat => {
+            next.last_beat_at = Some(now);
+            match rec.state {
+                SessionState::Starting
+                | SessionState::Waiting
+                | SessionState::WaitingPermission
+                | SessionState::Error => next.state = SessionState::Working,
+                _ => {}
+            }
+        }
+        Event::Stop => {
+            next.state = SessionState::Waiting;
+            next.last_stop_at = Some(now);
+        }
+        Event::NotificationIdle => next.state = SessionState::Waiting,
+        Event::NotificationPermission => next.state = SessionState::WaitingPermission,
+        Event::PostToolUseFailure => {
+            next.state = SessionState::Error;
+            next.error_count = rec.error_count.saturating_add(1);
+            next.last_beat_at = Some(now);
+        }
+        Event::SessionEnd => next.state = SessionState::Ended,
+        Event::HeartbeatTimeout => match rec.state {
+            SessionState::Working | SessionState::Waiting | SessionState::WaitingPermission => {
+                next.state = SessionState::Ended;
+            }
+            _ => {}
+        },
+    }
+    next
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
