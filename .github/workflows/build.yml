@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build core crates + forwarder
+        run: cargo build --release -p cc_state -p cc_collector -p cc_forwarder
+
+      - name: Core tests
+        run: cargo test --workspace -- --test-threads=1
+
+      # src-tauri is excluded from the root workspace (Tauri manages its own build).
+      # This step validates that the blind-written Tauri app actually COMPILES on real MSVC.
+      - name: Compile Tauri app
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release
+
+      - name: Installer unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Upload compiled exe (smoke artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-task-state-exe
+          path: src-tauri/target/release/claude-task-state.exe
+          if-no-files-found: warn
