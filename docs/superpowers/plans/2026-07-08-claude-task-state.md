@@ -37,39 +37,56 @@ claude-task-state/
 
 ---
 
-## Task 1: Install Rust toolchain (prerequisite)
+## Execution Approach (Plan C — no local admin)
 
-**Why first:** `cargo` is currently missing; nothing compiles without it.
+The dev/build machine is a corporate Windows box where the user is a **standard user with no local admin** (cannot install MSVC / VS Build Tools). Therefore:
+
+- **Core (Tasks 1–7):** develop locally with the **`x86_64-pc-windows-gnu`** Rust toolchain. rustup bundles the GNU linker, so **no admin, no MSVC** is needed for the pure-Rust crates (`cc_state`, `cc_forwarder`, `cc_collector` — no C deps).
+- **Tauri UI (Tasks 8–11):** requires MSVC and **cannot be cross-built**. Defer until MSVC is available via one of:
+  1. **GitHub Actions `windows-latest` runner** (MSVC + WebView2 preinstalled — no admin needed; the recommended path). Add `.github/workflows/build.yml` using `tauri-apps/tauri-action`; download the resulting installer artifact and run it on Windows.
+  2. IT / domain admin installing VS Build Tools locally.
+- **Fallback if CI / MSVC is unavailable:** swap the UI to **Electron** (`electron-builder --win` packages Windows installers from any OS without MSVC).
+
+> Verified reachable from the dev box: `win.rustup.com`, `static.rust-lang.org`. The `x86_64-pc-windows-gnu` toolchain links pure-Rust crates out of the box.
+
+---
+
+## Task 1: Install Rust toolchain — GNU target, no admin
+
+**Why first:** `cargo` is currently missing; nothing compiles without it. We use the **GNU** target so no MSVC / no admin is required (see Execution Approach above).
 
 **Files:** none (environment only).
 
-- [ ] **Step 1: Install rustup**
-```
-winget install Rustlang.Rustup
-```
-Then in a NEW terminal (so PATH reloads):
-```
-rustup default stable-x86_64-pc-windows-msvc
-```
+- [ ] **Step 1: Download rustup-init.exe**
 
-- [ ] **Step 2: Install MSVC build tools** (Tauri/Rust on Windows needs the MSVC C linker)
-```
-winget install Microsoft.VisualStudio.2022.BuildTools --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-```
-(Skip if you already have VS with the C++ workload.)
+From https://rustup.rs (or directly https://win.rustup.com/x86_64). Save anywhere, e.g. `Downloads`. User-level install — no admin, no UAC.
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 2: Install the GNU toolchain**
+
+In a regular (non-admin) PowerShell, in the download folder:
 ```
+.\rustup-init.exe -y --default-toolchain stable-x86_64-pc-windows-gnu --profile minimal
+```
+If it prints a warning about Visual Studio / MSVC, ignore it — the GNU target does not need MSVC.
+
+- [ ] **Step 3: New terminal, set default, verify**
+```
+rustup default stable-x86_64-pc-windows-gnu
 cargo --version
 rustc --version
 ```
-Expected: both print version strings. If `cargo` not found, open a new terminal so PATH reloads.
 
-- [ ] **Step 4: Confirm WebView2 runtime present** (Tauri needs it; preinstalled on Win10 21H2+/Win11)
+- [ ] **Step 4: Link self-check (must produce an .exe)**
 ```
-reg query "HKLM\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+cargo new --bin _linkcheck
+cd _linkcheck
+cargo build
+cd ..
+Remove-Item -Recurse -Force _linkcheck
 ```
-If missing: `winget install Microsoft.EdgeWebView2Runtime`.
+`cargo --version` alone can mask a missing linker. This step passes only if the GNU-bundled linker works. (If it fails to download crates, suspect a corp proxy — surface the error.)
+
+> WebView2 / MSVC are NOT needed for Tasks 2–7. They are needed only for the Tauri UI (Tasks 8–11), built separately via GitHub Actions or IT — see Execution Approach.
 
 ---
 
