@@ -1,3 +1,4 @@
 [workspace]
-members = ["collector","forwarder","state"]
+members = ["state", "forwarder", "collector"]
+exclude = ["src-tauri"]
 resolver = "2"

@@ -1,0 +1,23 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: transparent; font-family: "Segoe UI", system-ui, sans-serif; }
+#app {
+  height: 100vh; padding: 8px;
+  background: rgba(24,24,28,0.92);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow-y: auto;
+}
+.card {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: rgba(255,255,255,0.04); border-radius: 8px;
+}
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px currentColor; }
+.label { color:#eee; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.state { color:#aaa; font-size:11px; margin-left:auto; }
+.dot.green  { background:#3ddc84; color:#3ddc84; }
+.dot.yellow { background:#ffd24a; color:#ffd24a; }
+.dot.orange { background:#ff9e3d; color:#ff9e3d; }
+.dot.red    { background:#ff5c5c; color:#ff5c5c; }
+.dot.gray   { background:#888;    color:#888; }
+.empty { color:#888; font-size:12px; padding:12px; text-align:center; }
