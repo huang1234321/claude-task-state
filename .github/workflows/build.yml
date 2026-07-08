@@ -34,6 +34,10 @@ jobs:
       - name: Generate app icons
         run: cargo tauri icon app-icon.png
 
+      - name: List generated icons
+        shell: bash
+        run: ls -la src-tauri/icons
+
       # src-tauri is excluded from the root workspace (Tauri manages its own build).
       # bundle.targets in tauri.conf.json is ["msi","nsis"], so this emits both installers.
       - name: Build Tauri installers (msi + nsis)
