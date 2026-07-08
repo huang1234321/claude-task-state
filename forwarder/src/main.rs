@@ -140,10 +140,38 @@ mod tests {
     }
 
     #[test]
-    fn post_formats_url_correctly() {
-        // Test that post() constructs the right URL and doesn't panic
-        // We can't test actual HTTP without a server, but we verify the logic path
-        post(8080, "test-endpoint", br#"{"test":true}"#);
+    fn post_delivers_body_to_server() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let body = br#"{"session_id":"x"}"#.to_vec();
+        let handle = std::thread::spawn(move || post(port, "statusline", &body));
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut buf = Vec::new();
+        let mut chunk = [0u8; 1024];
+        // headers + small body arrive together on localhost; read until end of headers
+        for _ in 0..8 {
+            let n = stream.read(&mut chunk).unwrap();
+            if n == 0 {
+                break;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+            if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                break;
+            }
+        }
+        let req = String::from_utf8_lossy(&buf);
+        assert!(
+            req.starts_with("POST /statusline HTTP/"),
+            "bad request line: {}",
+            &req[..req.len().min(50)]
+        );
+        assert!(req.contains("Content-Type: application/json"), "missing content-type");
+        assert!(req.contains(r#""session_id":"x""#), "body not delivered");
+        // respond so minreq::send() completes promptly instead of hitting its 200ms timeout
+        stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").unwrap();
+        handle.join().unwrap();
     }
 
     #[test]
