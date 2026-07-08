@@ -50,18 +50,24 @@ fn multiple_sessions_are_distinct() {
 
 #[test]
 fn reaper_ends_stale_and_removes_dead() {
+    // Anchor "now" in the future so `now - duration` can't underflow. On Windows,
+    // Instant is rooted at boot time, so `Instant::now() - large_duration` panics
+    // when a fresh CI runner hasn't been up long enough. reap() takes `now` as a
+    // parameter precisely so tests can use a fake clock — use it.
+    let now = Instant::now() + Duration::from_secs(10000);
+
     let mut map = std::collections::HashMap::new();
     let mut r = cc_state::SessionRecord::new("s1".into(), "p".into(), "/p".into());
     r.state = cc_state::SessionState::Working;
-    r.last_beat_at = Some(Instant::now() - Duration::from_secs(120));
+    r.last_beat_at = Some(now - Duration::from_secs(120));
     map.insert("s1".into(), r);
-    reap(&mut map, Instant::now(), Duration::from_secs(30), Duration::from_secs(300));
+    reap(&mut map, now, Duration::from_secs(30), Duration::from_secs(300));
     assert_eq!(map.get("s1").unwrap().state, cc_state::SessionState::Ended);
 
     let mut r2 = map.get_mut("s1").unwrap().clone();
-    r2.last_beat_at = Some(Instant::now() - Duration::from_secs(600));
+    r2.last_beat_at = Some(now - Duration::from_secs(600));
     let mut m2 = std::collections::HashMap::new();
     m2.insert("s1".into(), r2);
-    reap(&mut m2, Instant::now(), Duration::from_secs(30), Duration::from_secs(300));
+    reap(&mut m2, now, Duration::from_secs(30), Duration::from_secs(300));
     assert!(m2.get("s1").is_none());
 }
