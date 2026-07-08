@@ -1,0 +1,22 @@
+# Rust / Tauri
+target/
+**/*.rs.bk
+*.pdb
+
+# Node / frontend
+node_modules/
+dist/
+package-lock.json
+yarn.lock
+
+# Tauri build output
+src-tauri/target/
+src-tauri/gen/
+
+# Local env / secrets
+.env
+.env.local
+
+# OS
+Thumbs.db
+.DS_Store
