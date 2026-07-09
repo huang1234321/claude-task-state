@@ -1,12 +1,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: transparent; font-family: "Segoe UI", system-ui, sans-serif; }
 #app {
+  position: relative;
   height: 100vh; padding: 8px;
   background: rgba(24,24,28,0.92);
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.08);
   overflow-y: auto;
 }
+.close-btn {
+  position: absolute; top: 2px; right: 4px; z-index: 2;
+  background: transparent; border: none; color: #888;
+  font-size: 15px; line-height: 1; cursor: pointer; padding: 2px 6px;
+}
+.close-btn:hover { color: #fff; }
 .card {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; margin-bottom: 6px;

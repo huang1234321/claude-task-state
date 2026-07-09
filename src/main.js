@@ -4,6 +4,13 @@ const invoke =
   window.__TAURI__?.tauri?.invoke ||
   window.__TAURI__?.invoke;
 
+// Resolve the current window for drag / hide (Tauri v2: getCurrentWebviewWindow or getCurrentWindow).
+function getCurrentWin() {
+  const w = window.__TAURI__?.window || window.__TAURI__ || {};
+  const fn = w.getCurrentWebviewWindow || w.getCurrentWindow;
+  return fn ? fn.call(w) : null;
+}
+
 const STATE_LABEL = {
   starting: "…",
   working: "working",
@@ -37,6 +44,15 @@ async function tick() {
   if (!invoke) return;
   try { render(await invoke("get_sessions")); } catch (e) { console.error(e); }
 }
+
+// Drag the borderless window by its background (not when grabbing a card or the close button).
+document.getElementById("app").addEventListener("mousedown", (e) => {
+  if (e.target.closest(".close-btn") || e.target.closest(".card")) return;
+  getCurrentWin()?.startDragging?.();
+});
+
+// Close button → hide window to tray (use the tray "Quit" to exit fully).
+document.querySelector(".close-btn")?.addEventListener("click", () => getCurrentWin()?.hide?.());
 
 tick();
 setInterval(tick, 1000);
