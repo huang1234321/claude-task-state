@@ -3,9 +3,8 @@ html, body { height: 100%; background: transparent; font-family: "Segoe UI", sys
 #app {
   position: relative;
   height: 100vh; padding: 10px;
-  background: rgba(24,24,28,0.92);
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgb(24,24,28);
+  border-radius: 0;
   overflow-y: auto;
 }
 .close-btn {
