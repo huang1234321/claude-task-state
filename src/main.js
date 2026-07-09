@@ -4,11 +4,12 @@ const invoke =
   window.__TAURI__?.tauri?.invoke ||
   window.__TAURI__?.invoke;
 
-// Resolve the current window for drag / hide (Tauri v2: getCurrentWebviewWindow or getCurrentWindow).
+// Resolve the current window for drag / hide.
+// Canonical Tauri v2 (withGlobalTauri): window.__TAURI__.webviewWindow.getCurrentWebviewWindow()
 function getCurrentWin() {
-  const w = window.__TAURI__?.window || window.__TAURI__ || {};
-  const fn = w.getCurrentWebviewWindow || w.getCurrentWindow;
-  return fn ? fn.call(w) : null;
+  const T = window.__TAURI__ || {};
+  const fn = T.webviewWindow?.getCurrentWebviewWindow || T.window?.getCurrentWindow;
+  return fn ? fn() : null;
 }
 
 const STATE_LABEL = {
