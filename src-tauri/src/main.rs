@@ -120,6 +120,11 @@ fn uninstall_hooks() -> Result<String, String> {
     uninstall_config().map(|_| "uninstalled".into()).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 fn main() {
     let app_state = AppState::default();
     let _server_handle = start_server(AppState { records: app_state.records.clone() }, 7331);
@@ -148,7 +153,7 @@ fn main() {
                 .build(app)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_sessions, install_hooks, uninstall_hooks])
+        .invoke_handler(tauri::generate_handler![get_sessions, install_hooks, uninstall_hooks, quit_app])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

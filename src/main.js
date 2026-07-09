@@ -70,15 +70,10 @@ document.getElementById("app").addEventListener("mousedown", (e) => {
   } catch (err) { dbg("drag throw: " + err); }
 });
 
-// Close button → hide window to tray (tray Quit exits fully).
-document.querySelector(".close-btn")?.addEventListener("click", () => {
-  const w = getCurrentWin();
-  if (!w || !w.hide) { dbg("close: no hide fn"); return; }
-  dbg("close: calling hide");
-  try {
-    const p = w.hide();
-    if (p && p.catch) p.catch((err) => dbg("close ERR: " + err));
-  } catch (err) { dbg("close throw: " + err); }
+// Close button → fully quit the app (no lingering background process).
+document.querySelector(".close-btn")?.addEventListener("click", async () => {
+  dbg("close: quitting app");
+  try { await invoke("quit_app"); } catch (err) { dbg("close ERR: " + err); }
 });
 
 tick();
