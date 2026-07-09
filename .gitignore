@@ -12,6 +12,8 @@ yarn.lock
 # Tauri build output
 src-tauri/target/
 src-tauri/gen/
+# Forwarder staged as a Tauri resource by CI (built fresh each release)
+src-tauri/cc-forward.exe
 
 # Local env / secrets
 .env

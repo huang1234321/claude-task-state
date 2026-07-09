@@ -25,6 +25,13 @@ jobs:
       - name: Build core crates + forwarder
         run: cargo build --release -p cc_state -p cc_collector -p cc_forwarder
 
+      # Stage the forwarder so `cargo tauri build` bundles it as a resource
+      # (declared in tauri.conf.json bundle.resources). Install resolves this
+      # at runtime, so the distributed app is self-contained.
+      - name: Stage forwarder as a Tauri resource
+        shell: bash
+        run: cp target/release/cc-forward.exe src-tauri/cc-forward.exe
+
       - name: Core tests
         run: cargo test --workspace -- --test-threads=1
 

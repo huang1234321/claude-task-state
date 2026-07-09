@@ -14,7 +14,20 @@ struct AppStateHolder(AppState);
 
 mod installer;
 
-fn forwarder_exe_path() -> String {
+fn forwarder_exe_path(app: &tauri::AppHandle) -> String {
+    // Bundled (installed app): find the packaged forwarder resource.
+    let candidates = [
+        app.path()
+            .resolve("cc-forward.exe", tauri::path::BaseDirectory::Resource)
+            .ok(),
+        app.path().resource_dir().ok().map(|d| d.join("cc-forward.exe")),
+    ];
+    for p in candidates.into_iter().flatten() {
+        if p.exists() {
+            return p.to_string_lossy().replace('\\', "/");
+        }
+    }
+    // Dev fallback: the locally-built forwarder next to the workspace target dir.
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("target")
@@ -67,8 +80,8 @@ fn write_forwarder_config(v: &serde_json::Value) -> std::io::Result<()> {
     fs::write(&p, serde_json::to_string_pretty(v)?)
 }
 
-fn install_config() -> std::io::Result<()> {
-    let exe = forwarder_exe_path();
+fn install_config(app: &tauri::AppHandle) -> std::io::Result<()> {
+    let exe = forwarder_exe_path(app);
     let mut settings = read_settings();
     // Preserve a pre-existing user statusline so the forwarder can chain it.
     let existing = settings
@@ -88,8 +101,8 @@ fn install_config() -> std::io::Result<()> {
     write_settings(&settings)
 }
 
-fn uninstall_config() -> std::io::Result<()> {
-    let exe = forwarder_exe_path();
+fn uninstall_config(app: &tauri::AppHandle) -> std::io::Result<()> {
+    let exe = forwarder_exe_path(app);
     let mut settings = read_settings();
     // Restore the user's original statusline if we chained one.
     let chain = read_forwarder_config()
@@ -111,13 +124,13 @@ fn get_sessions(state: tauri::State<'_, AppStateHolder>) -> Vec<cc_collector::Se
 }
 
 #[tauri::command]
-fn install_hooks() -> Result<String, String> {
-    install_config().map(|_| "installed".into()).map_err(|e| e.to_string())
+fn install_hooks(app: tauri::AppHandle) -> Result<String, String> {
+    install_config(&app).map(|_| "installed".into()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn uninstall_hooks() -> Result<String, String> {
-    uninstall_config().map(|_| "uninstalled".into()).map_err(|e| e.to_string())
+fn uninstall_hooks(app: tauri::AppHandle) -> Result<String, String> {
+    uninstall_config(&app).map(|_| "uninstalled".into()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -145,8 +158,8 @@ fn main() {
                             let _ = if w.is_visible().unwrap_or(false) { w.hide() } else { w.show() };
                         }
                     }
-                    "install" => { let _ = install_config(); }
-                    "uninstall" => { let _ = uninstall_config(); }
+                    "install" => { let _ = install_config(app); }
+                    "uninstall" => { let _ = uninstall_config(app); }
                     "quit" => app.exit(0),
                     _ => {}
                 })
