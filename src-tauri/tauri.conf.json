@@ -9,8 +9,8 @@
     "windows": [{
       "label": "main",
       "title": "Claude Task State",
-      "width": 240,
-      "height": 320,
+      "width": 320,
+      "height": 360,
       "resizable": false,
       "decorations": false,
       "transparent": true,
