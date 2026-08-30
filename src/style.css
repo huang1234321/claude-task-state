@@ -1,30 +1,116 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; background: transparent; font-family: "Segoe UI", system-ui, sans-serif; }
+html, body { height: 100%; background: transparent; }
+body {
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+/*
+ * Floating panel. Opaque and square on purpose: a rounded/transparent panel
+ * renders white corners under WebView2 (see commit a46fe33) — keep it that way.
+ */
 #app {
   position: relative;
-  height: 100vh; padding: 10px;
-  background: rgb(24,24,28);
-  border-radius: 0;
+  height: 100vh;
+  padding: 12px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  background: rgb(24, 24, 28);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+#list {
+  flex: 1;
   overflow-y: auto;
+  margin: 0 -2px;
+  padding: 0 2px;
 }
+#list::-webkit-scrollbar { width: 4px; }
+#list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 2px; }
+#list::-webkit-scrollbar-track { background: transparent; }
+
+/* Close button: invisible until the panel is hovered, quiet when idle. */
 .close-btn {
-  position: absolute; top: 2px; right: 6px; z-index: 2;
-  background: transparent; border: none; color: #888;
-  font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 8px;
+  position: absolute; top: 5px; right: 8px; z-index: 2;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: 6px;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.close-btn:hover { color: #fff; }
-#dbg { color:#666; font-size:11px; padding:4px 6px 2px; word-break:break-all; min-height:14px; }
+#app:hover .close-btn { opacity: 1; }
+.close-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.close-btn:focus-visible { opacity: 1; outline: 1px solid rgba(255, 255, 255, 0.4); }
+
+/* Session card: traffic-light dot + project name + status word. */
 .card {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 12px; margin-bottom: 8px;
-  background: rgba(255,255,255,0.04); border-radius: 10px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-.dot { width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 8px currentColor; }
-.label { color:#eee; font-size:20px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.state { color:#aaa; font-size:16px; margin-left:auto; }
-.dot.green  { background:#3ddc84; color:#3ddc84; }
-.dot.yellow { background:#ffd24a; color:#ffd24a; }
-.dot.orange { background:#ff9e3d; color:#ff9e3d; }
-.dot.red    { background:#ff5c5c; color:#ff5c5c; }
-.dot.gray   { background:#888;    color:#888; }
-.empty { color:#888; font-size:16px; padding:16px; text-align:center; }
+.card:hover { background: rgba(255, 255, 255, 0.08); }
+.card.enter { animation: card-in 0.18s ease both; }
+.card.flash { animation: flash 0.6s ease; }
+
+.card[data-color="green"]  { --c: #3ddc84; }
+.card[data-color="yellow"] { --c: #ffd24a; }
+.card[data-color="orange"] { --c: #ff9e3d; }
+.card[data-color="red"]    { --c: #ff5c5c; }
+.card[data-color="gray"]   { --c: #8a8a92; }
+
+/* States that need the user get a tinted border so they pop while scanning. */
+.card[data-state="error"] { border-color: rgba(255, 92, 92, 0.38); }
+.card[data-state="waitingpermission"] { border-color: rgba(255, 158, 61, 0.38); }
+
+.dot {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--c);
+  box-shadow: 0 0 9px var(--c);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+/* Working sessions breathe; everything else stays steady. */
+.card[data-state="working"] .dot { animation: pulse 1.8s ease-in-out infinite; }
+
+.label {
+  color: #f2f2f4; font-size: 19px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.state {
+  color: var(--c); opacity: 0.85;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  margin-left: auto; padding-left: 10px;
+  flex: 0 0 auto;
+}
+
+.empty {
+  color: #7c7c84; font-size: 15px; line-height: 1.5;
+  padding: 28px 14px; text-align: center;
+}
+.empty .sub { margin-top: 3px; font-size: 12px; color: #5c5c64; }
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes flash {
+  0%   { background: rgba(255, 255, 255, 0.2); }
+  100% { background: rgba(255, 255, 255, 0.04); }
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 5px var(--c); transform: scale(1); }
+  50%      { box-shadow: 0 0 14px 2px var(--c); transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .dot { animation: none !important; transition: none !important; }
+}

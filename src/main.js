@@ -4,13 +4,6 @@ const invoke =
   window.__TAURI__?.tauri?.invoke ||
   window.__TAURI__?.invoke;
 
-// Tiny on-screen diagnostics (temp) so drag/close failures aren't silent.
-function dbg(msg) {
-  const el = document.getElementById("dbg");
-  if (el) el.textContent = msg;
-  console.log("[dbg]", msg);
-}
-
 // Canonical Tauri v2 (withGlobalTauri): window.__TAURI__.webviewWindow.getCurrentWebviewWindow()
 function getCurrentWin() {
   const T = window.__TAURI__ || {};
@@ -19,61 +12,132 @@ function getCurrentWin() {
 }
 
 const STATE_LABEL = {
-  starting: "…",
+  starting: "starting",
   working: "working",
-  waiting: "waiting",
-  waitingpermission: "your move",
+  waiting: "your move",
+  waitingpermission: "approve?",
   error: "error",
   ended: "ended",
 };
 
-function escapeHtml(t) {
-  return t.replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+// Card order: what needs the user first, autonomous work below, dead last.
+const STATE_RANK = {
+  error: 0,
+  waitingpermission: 1,
+  waiting: 2,
+  working: 3,
+  starting: 4,
+  ended: 5,
+};
+
+const list = document.getElementById("list");
+const prevStates = new Map(); // session_id -> state at last render
+
+function stateLabel(s) {
+  return STATE_LABEL[s.state] || s.state;
 }
 
+function makeCard(s) {
+  const el = document.createElement("div");
+  el.className = "card enter";
+  el.dataset.id = s.session_id;
+  el.setAttribute("role", "listitem");
+  const dot = document.createElement("span");
+  dot.className = "dot";
+  const label = document.createElement("span");
+  label.className = "label";
+  const state = document.createElement("span");
+  state.className = "state";
+  el.append(dot, label, state);
+  el.addEventListener("animationend", () => el.classList.remove("enter", "flash"));
+  return el;
+}
+
+function updateCard(el, s) {
+  el.dataset.color = s.color;
+  el.dataset.state = s.state;
+  el.children[1].textContent = s.project;
+  el.children[2].textContent = stateLabel(s);
+  el.title = s.project + " — " + stateLabel(s);
+  if (prevStates.get(s.session_id) !== undefined && prevStates.get(s.session_id) !== s.state) {
+    el.classList.remove("flash");
+    void el.offsetWidth; // restart the animation
+    el.classList.add("flash");
+  }
+  prevStates.set(s.session_id, s.state);
+}
+
+function makeEmpty() {
+  const el = document.createElement("div");
+  el.className = "empty";
+  const l1 = document.createElement("div");
+  l1.textContent = "No active Claude Code sessions";
+  const l2 = document.createElement("div");
+  l2.className = "sub";
+  l2.textContent = "waiting for heartbeats…";
+  el.append(l1, l2);
+  return el;
+}
+
+// Keyed update: cards persist across ticks (no innerHTML rewrite, no flicker),
+// so CSS transitions and change flashes only fire on real changes.
 function render(sessions) {
-  const list = document.getElementById("list");
   if (!sessions || !sessions.length) {
-    list.innerHTML = '<div class="empty">No active Claude Code sessions</div>';
+    list.replaceChildren(makeEmpty());
+    prevStates.clear();
     return;
   }
-  list.innerHTML = sessions
-    .map((s) => `
-      <div class="card">
-        <span class="dot ${s.color}"></span>
-        <span class="label">${escapeHtml(s.project)}</span>
-        <span class="state">${STATE_LABEL[s.state] || s.state}</span>
-      </div>`)
-    .join("");
+  list.querySelector(".empty")?.remove();
+  const ordered = [...sessions].sort(
+    (a, b) =>
+      (STATE_RANK[a.state] ?? 9) - (STATE_RANK[b.state] ?? 9) ||
+      a.project.localeCompare(b.project)
+  );
+  const cards = new Map();
+  for (const el of list.querySelectorAll(".card")) cards.set(el.dataset.id, el);
+  const seen = new Set();
+  for (const s of ordered) {
+    seen.add(s.session_id);
+    if (!cards.has(s.session_id)) cards.set(s.session_id, makeCard(s));
+    updateCard(cards.get(s.session_id), s);
+  }
+  for (const [id, el] of cards) {
+    if (!seen.has(id)) {
+      el.remove();
+      prevStates.delete(id);
+    }
+  }
+  list.append(...ordered.map((s) => cards.get(s.session_id)));
 }
 
 async function tick() {
   if (!invoke) return;
-  try { render(await invoke("get_sessions")); } catch (e) { console.error(e); }
+  try {
+    render(await invoke("get_sessions"));
+  } catch (e) {
+    console.error("get_sessions failed:", e);
+  }
 }
-
-// Probe what's actually available (helps diagnose if drag/close still fail).
-(function probe() {
-  const T = window.__TAURI__;
-  dbg(T ? "TAURI ns: " + Object.keys(T).join(",") : "no __TAURI__");
-})();
 
 // Drag the borderless window by its background (not on cards / close button).
 document.getElementById("app").addEventListener("mousedown", (e) => {
   if (e.target.closest(".close-btn") || e.target.closest(".card")) return;
   const w = getCurrentWin();
-  if (!w || !w.startDragging) { dbg("drag: no startDragging fn"); return; }
-  dbg("drag: calling startDragging");
+  if (!w?.startDragging) return;
   try {
-    const p = w.startDragging();
-    if (p && p.catch) p.catch((err) => dbg("drag ERR: " + err));
-  } catch (err) { dbg("drag throw: " + err); }
+    w.startDragging()?.catch?.((err) => console.error("drag failed:", err));
+  } catch (err) {
+    console.error("drag failed:", err);
+  }
 });
 
 // Close button → fully quit the app (no lingering background process).
 document.querySelector(".close-btn")?.addEventListener("click", async () => {
-  dbg("close: quitting app");
-  try { await invoke("quit_app"); } catch (err) { dbg("close ERR: " + err); }
+  try {
+    await invoke("quit_app");
+  } catch (err) {
+    console.error("quit failed:", err);
+  }
 });
 
 tick();
